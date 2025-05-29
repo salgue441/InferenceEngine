@@ -1,0 +1,70 @@
+# C++ specific
+*.o
+*.obj
+*.exe
+*.out
+*.app
+*.dll
+*.so
+*.dylib
+*.lib
+*.a
+*.la
+*.lo
+
+# Build directories
+build/
+cmake-build-*/
+Debug/
+Release/
+x64/
+bin/
+lib/
+
+# IDE specific
+.vs/
+.vscode/
+.idea/
+*.swp
+*.swo
+.clangd/
+compile_commands.json
+
+# CMake
+CMakeCache.txt
+CMakeFiles/
+CMakeScripts/
+Testing/
+Makefile
+cmake_install.cmake
+install_manifest.txt
+CTestTestfile.cmake
+
+# LibTorch
+*.pt
+*.pth
+libtorch/
+
+# Docker
+.docker/
+docker-compose.override.yml
+Dockerfile.*
+*.env
+
+# Dependency directories
+vcpkg/
+conan/
+deps/
+
+# OS specific
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Log files
+*.log
+logs/

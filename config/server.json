@@ -1,0 +1,75 @@
+{
+  "server": {
+    "host": "0.0.0.0",
+    "port": 8080,
+    "worker_threads": 4,
+    "request_timeout_ms": 30000,
+    "max_request_size_mb": 10
+  },
+  "inference": {
+    "max_batch_size": 8,
+    "batch_timeout_ms": 10,
+    "enable_batching": true,
+    "device": "cpu",
+    "num_inference_threads": 2
+  },
+  "models": {
+    "model_directory": "./models",
+    "default_models": [
+      {
+        "name": "resnet50",
+        "path": "./models/resnet50.pt",
+        "type": "classification",
+        "enabled": true,
+        "max_batch_size": 16,
+        "preprocessing": {
+          "input_size": [224, 224],
+          "normalize": {
+            "mean": [0.485, 0.456, 0.406],
+            "std": [0.229, 0.224, 0.225]
+          }
+        }
+      },
+      {
+        "name": "yolo",
+        "path": "./models/yolo.pt",
+        "type": "detection",
+        "enabled": false,
+        "max_batch_size": 4,
+        "preprocessing": {
+          "input_size": [640, 640]
+        }
+      }
+    ]
+  },
+  "cache": {
+    "enabled": true,
+    "max_size_mb": 512,
+    "ttl_seconds": 3600
+  },
+  "logging": {
+    "level": "info",
+    "file": "./logs/inference.log",
+    "max_file_size_mb": 100,
+    "max_files": 5,
+    "console_output": true
+  },
+  "metrics": {
+    "enabled": true,
+    "prometheus_port": 9090,
+    "update_interval_ms": 1000
+  },
+  "security": {
+    "api_key_required": false,
+    "rate_limit": {
+      "enabled": true,
+      "requests_per_minute": 1000,
+      "burst_size": 100
+    }
+  },
+  "health_check": {
+    "enabled": true,
+    "interval_ms": 30000,
+    "timeout_ms": 5000
+  }
+}

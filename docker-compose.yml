@@ -1,0 +1,111 @@
+version: "3.8"
+
+services:
+  inference-engine:
+    build:
+      context: .
+      dockerfile: dockerfile
+      target: runtime
+    container_name: inference_engine
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./models:/app/models:ro
+      - ./config:/app/config:ro
+      - ./logs:/app/logs
+    environment:
+      - LOG_LEVEL=info
+      - WORKER_THREADS=4
+      - MAX_BATCH_SIZE=8
+      - BATCH_TIMEOUT_MS=10
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Dev version with hot reload
+  inference-engine-dev:
+    profiles: ["dev"]
+    build:
+      context: .
+      dockerfile: dockerfile
+      target: builder
+    container_name: inference_engine_dev
+    ports:
+      - "8080:8080"
+      - "9090:9090"
+    volumes:
+      - .:/app
+      - ./models:/app/models:ro
+      - ./config:/app/config:ro
+      - ./logs:/app/logs
+    working_dir: /app
+    command:
+      [
+        "bash",
+        "-c",
+        "cd build && make && ./inference_engine --config /app/config/server.json --debug",
+      ]
+    environment:
+      - LOG_LEVEL=debug
+      - CMAKE_PREFIX_PATH=/opt/libtorch
+    restart: "no"
+
+  # Load balancer for multiple instances
+  nginx:
+    profiles: ["production"]
+    image: nginx:alpine
+    container_name: inference_lib
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - inference-engine
+    restart: unless-stopped
+
+  # Prometheus for metrics collection
+  prometheus:
+    profiles: ["monitoring"]
+    image: prom/prometheus:latest
+    container_name: inference_prometheus
+    ports:
+      - "9091:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--web.console.libraries=/etc/prometheus/console_libraries"
+      - "--web.console.templates=/etc/prometheus/consoles"
+      - "--web.enable-lifecycle"
+    restart: unless-stopped
+
+  # Grafana for visualization
+  grafana:
+    profiles: ["monitoring"]
+    image: grafana/grafana:latest
+    container_name: inference_grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources:ro
+    depends_on:
+      - prometheus
+    restart: unless-stopped
+
+volumes:
+  prometheus_data:
+  grafana_data:
+
+networks:
+  default:
+    name: inference_network
