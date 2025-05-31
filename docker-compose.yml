@@ -1,111 +1,324 @@
 version: "3.8"
 
+# NeuraForge - Docker Compose Configuration
+# Provides development, production, and testing environments
+
 services:
-  inference-engine:
+  # ==========================================================================
+  # Production Service - Minimal runtime environment
+  # ==========================================================================
+  neuraforge:
     build:
       context: .
-      dockerfile: dockerfile
+      dockerfile: Dockerfile
       target: runtime
-    container_name: inference_engine
+      args:
+        - BUILDKIT_INLINE_CACHE=1
+    image: neuraforge:latest
+    container_name: neuraforge-prod
+    restart: unless-stopped
     ports:
       - "8080:8080"
     volumes:
       - ./models:/app/models:ro
       - ./config:/app/config:ro
-      - ./logs:/app/logs
+      - neuraforge-logs:/app/logs
     environment:
-      - LOG_LEVEL=info
-      - WORKER_THREADS=4
-      - MAX_BATCH_SIZE=8
-      - BATCH_TIMEOUT_MS=10
-    restart: unless-stopped
+      - NEURAFORGE_LOG_LEVEL=info
+      - NEURAFORGE_MODEL_PATH=/app/models
+      - NEURAFORGE_LOG_PATH=/app/logs
+      - NEURAFORGE_CONFIG_PATH=/app/config
+      - NEURAFORGE_THREADS=auto
+      - NEURAFORGE_BATCH_SIZE=32
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 40s
+      start_period: 5s
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 4G
+        reservations:
+          cpus: "1.0"
+          memory: 2G
+    networks:
+      - neuraforge-network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.neuraforge.rule=Host(`neuraforge.local`)"
+      - "traefik.http.services.neuraforge.loadbalancer.server.port=8080"
 
-  # Dev version with hot reload
-  inference-engine-dev:
-    profiles: ["dev"]
+  # ==========================================================================
+  # Development Service - Full development environment
+  # ==========================================================================
+  neuraforge-dev:
     build:
       context: .
-      dockerfile: dockerfile
-      target: builder
-    container_name: inference_engine_dev
-    ports:
-      - "8080:8080"
-      - "9090:9090"
+      dockerfile: Dockerfile
+      target: development
+      args:
+        - BUILDKIT_INLINE_CACHE=1
+    image: neuraforge:dev
+    container_name: neuraforge-dev
     volumes:
-      - .:/app
-      - ./models:/app/models:ro
-      - ./config:/app/config:ro
-      - ./logs:/app/logs
-    working_dir: /app
-    command:
-      [
-        "bash",
-        "-c",
-        "cd build && make && ./inference_engine --config /app/config/server.json --debug",
-      ]
+      - .:/src:cached
+      - vcpkg-cache:/opt/vcpkg/downloads
+      - vcpkg-installed:/opt/vcpkg/installed
+      - dev-build-cache:/src/build
+      - ~/.gitconfig:/home/neuraforge/.gitconfig:ro
+      - ~/.ssh:/home/neuraforge/.ssh:ro
+    working_dir: /src
     environment:
-      - LOG_LEVEL=debug
-      - CMAKE_PREFIX_PATH=/opt/libtorch
-    restart: "no"
+      - CMAKE_BUILD_TYPE=Debug
+      - VCPKG_ROOT=/opt/vcpkg
+      - CCACHE_DIR=/src/.ccache
+      - ASAN_OPTIONS=detect_leaks=1:abort_on_error=1
+      - UBSAN_OPTIONS=print_stacktrace=1:abort_on_error=1
+    ports:
+      - "8081:8080"
+      - "9229:9229" # Debug port
+    stdin_open: true
+    tty: true
+    networks:
+      - neuraforge-network
+    command: /bin/bash
+    profiles:
+      - dev
 
-  # Load balancer for multiple instances
+  # ==========================================================================
+  # Benchmark Service - Performance testing
+  # ==========================================================================
+  neuraforge-benchmark:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: benchmark
+      args:
+        - BUILDKIT_INLINE_CACHE=1
+    image: neuraforge:benchmark
+    container_name: neuraforge-benchmark
+    volumes:
+      - ./models:/app/models:ro
+      - ./benchmarks:/app/benchmarks:ro
+      - benchmark-results:/app/logs
+    environment:
+      - NEURAFORGE_BENCHMARK_ITERATIONS=1000
+      - NEURAFORGE_BENCHMARK_WARMUP=100
+      - NEURAFORGE_MODEL_PATH=/app/models
+      - NEURAFORGE_BENCHMARK_OUTPUT=/app/logs
+    deploy:
+      resources:
+        limits:
+          cpus: "4.0"
+          memory: 8G
+    networks:
+      - neuraforge-network
+    profiles:
+      - benchmark
+
+  # ==========================================================================
+  # Testing Service - CI/CD testing
+  # ==========================================================================
+  neuraforge-test:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: testing
+      args:
+        - BUILDKIT_INLINE_CACHE=1
+    image: neuraforge:test
+    container_name: neuraforge-test
+    volumes:
+      - test-results:/src/test-results
+      - coverage-reports:/src/coverage
+    environment:
+      - CTEST_OUTPUT_ON_FAILURE=1
+      - GTEST_COLOR=1
+      - CMAKE_BUILD_TYPE=Debug
+    networks:
+      - neuraforge-network
+    profiles:
+      - test
+
+  # ==========================================================================
+  # Load Balancer - Nginx for production scaling
+  # ==========================================================================
   nginx:
-    profiles: ["production"]
     image: nginx:alpine
-    container_name: inference_lib
+    container_name: neuraforge-nginx
     ports:
       - "80:80"
+      - "443:443"
     volumes:
-      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+      - nginx-logs:/var/log/nginx
     depends_on:
-      - inference-engine
+      - neuraforge
     restart: unless-stopped
+    networks:
+      - neuraforge-network
+    profiles:
+      - production
 
-  # Prometheus for metrics collection
+  # ==========================================================================
+  # Monitoring - Prometheus for metrics collection
+  # ==========================================================================
   prometheus:
-    profiles: ["monitoring"]
     image: prom/prometheus:latest
-    container_name: inference_prometheus
+    container_name: neuraforge-prometheus
     ports:
-      - "9091:9090"
+      - "9090:9090"
     volumes:
       - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
-      - prometheus_data:/prometheus
+      - prometheus-data:/prometheus
     command:
       - "--config.file=/etc/prometheus/prometheus.yml"
       - "--storage.tsdb.path=/prometheus"
       - "--web.console.libraries=/etc/prometheus/console_libraries"
       - "--web.console.templates=/etc/prometheus/consoles"
+      - "--storage.tsdb.retention.time=200h"
       - "--web.enable-lifecycle"
     restart: unless-stopped
+    networks:
+      - neuraforge-network
+    profiles:
+      - monitoring
 
-  # Grafana for visualization
+  # ==========================================================================
+  # Grafana - Metrics visualization
+  # ==========================================================================
   grafana:
-    profiles: ["monitoring"]
     image: grafana/grafana:latest
-    container_name: inference_grafana
+    container_name: neuraforge-grafana
     ports:
       - "3000:3000"
-    environment:
-      - GF_SECURITY_ADMIN_PASSWORD=admin
     volumes:
-      - grafana_data:/var/lib/grafana
+      - grafana-data:/var/lib/grafana
       - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
       - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources:ro
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
     depends_on:
       - prometheus
     restart: unless-stopped
+    networks:
+      - neuraforge-network
+    profiles:
+      - monitoring
 
-volumes:
-  prometheus_data:
-  grafana_data:
+  # ==========================================================================
+  # Redis - Caching layer for inference results
+  # ==========================================================================
+  redis:
+    image: redis:7-alpine
+    container_name: neuraforge-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+      - ./redis/redis.conf:/etc/redis/redis.conf:ro
+    command: redis-server /etc/redis/redis.conf
+    restart: unless-stopped
+    networks:
+      - neuraforge-network
+    profiles:
+      - caching
 
+  # ==========================================================================
+  # Model Server - Dedicated model serving
+  # ==========================================================================
+  model-server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runtime
+    image: neuraforge:model-server
+    container_name: neuraforge-model-server
+    volumes:
+      - ./models:/app/models:ro
+    environment:
+      - NEURAFORGE_MODE=model-server
+      - NEURAFORGE_MODEL_PATH=/app/models
+      - NEURAFORGE_CACHE_ENABLED=true
+    ports:
+      - "8082:8080"
+    depends_on:
+      - redis
+    restart: unless-stopped
+    networks:
+      - neuraforge-network
+    profiles:
+      - scaling
+
+# =============================================================================
+# Networks
+# =============================================================================
 networks:
-  default:
-    name: inference_network
+  neuraforge-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+
+# =============================================================================
+# Volumes for persistent data
+# =============================================================================
+volumes:
+  # Development volumes
+  vcpkg-cache:
+    driver: local
+
+  vcpkg-installed:
+    driver: local
+
+  dev-build-cache:
+    driver: local
+
+  # Application data volumes
+  neuraforge-logs:
+    driver: local
+
+  benchmark-results:
+    driver: local
+
+  test-results:
+    driver: local
+
+  coverage-reports:
+    driver: local
+
+  # Infrastructure volumes
+  nginx-logs:
+    driver: local
+
+  prometheus-data:
+    driver: local
+
+  grafana-data:
+    driver: local
+
+  redis-data:
+    driver: local
+
+# =============================================================================
+# Extension fields for reusable configurations
+# =============================================================================
+x-logging: &default-logging
+  driver: "json-file"
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+x-restart-policy: &restart-policy
+  restart: unless-stopped
+
+x-healthcheck: &healthcheck
+  interval: 30s
+  timeout: 10s
+  retries: 3
+  start_period: 5s

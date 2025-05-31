@@ -1,0 +1,321 @@
+# NeuraForge - Docker ignore file
+# Exclude unnecessary files from Docker build context
+
+# =============================================================================
+# Build artifacts and directories
+# =============================================================================
+build/
+bin/
+lib/
+obj/
+out/
+target/
+dist/
+*.build/
+
+# CMake generated files
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+CMakeSettings.json
+.cmake/
+
+# Build outputs
+*.exe
+*.dll
+*.so
+*.dylib
+*.a
+*.lib
+*.pdb
+*.ilk
+*.exp
+
+# =============================================================================
+# Development environment files
+# =============================================================================
+.vscode/
+.vs/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Dev container files (not needed in production builds)
+.devcontainer/
+
+# =============================================================================
+# Version control
+# =============================================================================
+.git/
+.gitignore
+.gitmodules
+.gitattributes
+
+# =============================================================================
+# Documentation and media
+# =============================================================================
+docs/
+*.md
+!README.md
+*.txt
+!CMakeLists.txt
+!vcpkg.json
+!vcpkg-configuration.json
+LICENSE
+CHANGELOG*
+CONTRIBUTING*
+CODE_OF_CONDUCT*
+
+# Images and media files
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.svg
+*.ico
+*.pdf
+
+# =============================================================================
+# Testing and CI/CD
+# =============================================================================
+tests/
+benchmarks/
+examples/
+.github/
+.gitlab-ci.yml
+.travis.yml
+.circleci/
+azure-pipelines.yml
+Jenkinsfile
+
+# Test outputs
+test_results/
+coverage/
+coverage.xml
+coverage.info
+coverage_html/
+*.gcda
+*.gcno
+*.gcov
+
+# Benchmark results
+benchmark_results/
+*.json
+!vcpkg.json
+!vcpkg-configuration.json
+
+# =============================================================================
+# Logs and temporary files
+# =============================================================================
+logs/
+*.log
+*.tmp
+*.temp
+temp/
+tmp/
+
+# Core dumps
+core
+core.*
+vgcore.*
+
+# =============================================================================
+# Package managers and dependencies (will be handled by vcpkg)
+# =============================================================================
+node_modules/
+vcpkg_installed/
+.vcpkg/
+conan/
+.conan/
+
+# Python virtual environments
+venv/
+env/
+.env
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# =============================================================================
+# IDE and editor specific files
+# =============================================================================
+*.user
+*.userprefs
+*.pidb
+*.suo
+*.sdf
+*.opensdf
+*.vcxproj.user
+*.vcxproj.filters
+
+# JetBrains IDEs
+.idea/
+*.iml
+*.iws
+
+# Eclipse
+.project
+.metadata
+.cproject
+.settings/
+
+# Code::Blocks
+*.cbp
+*.layout
+*.depend
+
+# =============================================================================
+# Operating system files
+# =============================================================================
+# Windows
+desktop.ini
+ehthumbs.db
+*.lnk
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+.Spotlight-V100
+.Trashes
+.fseventsd
+
+# Linux
+*~
+.nfs*
+.directory
+
+# =============================================================================
+# Models and large files (handle separately)
+# =============================================================================
+models/
+*.pt
+*.pth
+*.onnx
+*.pb
+*.tflite
+*.h5
+*.pkl
+*.pickle
+*.bin
+*.safetensors
+
+# Data files
+data/
+datasets/
+*.csv
+*.tsv
+*.parquet
+*.arrow
+
+# =============================================================================
+# Scripts and tools (not needed in production)
+# =============================================================================
+scripts/
+tools/
+*.sh
+*.bat
+*.ps1
+!entrypoint.sh
+
+# =============================================================================
+# Configuration files (keep only essential ones)
+# =============================================================================
+.env*
+!.env.example
+config/
+*.conf
+*.ini
+!vcpkg-configuration.json
+
+# Docker related (avoid recursion)
+Dockerfile*
+!Dockerfile
+docker-compose*.yml
+.dockerignore
+
+# =============================================================================
+# Profiling and debugging
+# =============================================================================
+*.prof
+*.trace
+callgrind.out*
+massif.out*
+cachegrind.out*
+perf.data*
+gmon.out
+
+# Valgrind
+vgcore.*
+*.supp
+
+# =============================================================================
+# Backup and archive files
+# =============================================================================
+*.bak
+*.backup
+*.old
+*.orig
+*.save
+*.swp
+*.swo
+*.zip
+*.tar
+*.tar.gz
+*.tar.bz2
+*.tar.xz
+*.7z
+*.rar
+
+# =============================================================================
+# Security and secrets
+# =============================================================================
+*.key
+*.pem
+*.crt
+*.csr
+*.p12
+secrets/
+.secrets/
+credentials/
+
+# =============================================================================
+# Performance and analysis files
+# =============================================================================
+*.flamegraph
+*.folded
+*.svg
+flamegraph/
+profile/
+analysis/
+
+# Static analysis outputs
+cppcheck.xml
+clang-tidy.yaml
+scan-build/
+
+# =============================================================================
+# Custom project specific exclusions
+# =============================================================================
+# Add any project-specific files to ignore here
+
+# Experimental code
+experimental/
+prototype/
+sandbox/
+
+# Client/server specific builds (if different from main)
+client/
+server/
+web/
+
+# Third-party code (should be managed by vcpkg)
+third_party/
+external/
+vendor/
+deps/

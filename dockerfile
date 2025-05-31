@@ -1,81 +1,217 @@
+# NeuraForge - High-Performance C++20 Neural Inference Engine
+# Multi-stage production Docker build
+
+# ==========================================
+# Base Stage - Common dependencies
+# ==========================================
 FROM ubuntu:22.04 AS base
 ENV DEBIAN_FRONTEND=nointeractive
 
-# System dependencies
+# Common runtime dependencies
 RUN apt-get update && apt-get install -y \
-  wget \
-  curl \
-  unzip \
   ca-certificates \
-  && rm -rf /var/lib/apt/lists/*
+  curl \
+  libgomp1 \
+  libstdc++6 \
+  && rm -rf /var/lib/apt/lists/* \
+  && apt-get clean
 
-# === Build Stage ===
+# ==========================================
+# Builder Stage - Compile the application
+# ==========================================
 FROM base AS builder
 
-# Install build depedencies
+# Install build dependencies
 RUN apt-get update && apt-get install -y \
   build-essential \
   cmake \
+  ninja-build \
   git \
+  curl \
+  zip \
+  unzip \
+  tar \
   pkg-config \
-  libomp-dev \
-  python3 \
-  python3-pip \
+  wget \
   && rm -rf /var/lib/apt/lists/*
 
-# LibTorch configuration
-WORKDIR /opt
-RUN wget https://download.pytorch.org/libtorch/cpu/libtorch-cxx11-abi-shared-with-deps-2.1.0%2Bcpu.zip \
-  && unzip libtorch-cxx11-abi-shared-with-deps-2.1.0+cpu.zip \
-  && rm libtorch-cxx11-abi-shared-with-deps-2.1.0+cpu.zip
+ENV VCPKG_ROOT=/opt/vcpkg
+RUN git clone https://github.com/Microsoft/vcpkg.git ${VCPKG_ROOT} \
+  && ${VCPKG_ROOT}/bootstrap-vcpkg.sh \
+  && chmod +x ${VCPKG_ROOT}/vcpkg
 
-ENV CMAKE_PREFIX_PATH=/opt/libtorch
+# Environment setup
+WORKDIR /src
+COPY vcpkg.json vcpkg-configuration.json ./
 
-# Copy Source Code
-COPY . /app
-WORKDIR /app
+RUN ${VCPKG_ROOT}/vcpkg install --triplet=x64-linux --clean-after-build
+COPY . .
 
-# Create build directory and compile
-RUN mkdir -p build && cd build && \
-  cmake -DCMAKE_BUILD_TYPE=Release \
-  -DCMAKE_PREFIX_PATH=/opt/libtorch \
-  .. && \
-  make -j$(nproc)
+RUN cmake --preset=release-linux \
+  -DCMAKE_TOOLCHAIN_FILE=${VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake \
+  -DBUILD_TESTS=OFF \
+  -DBUILD_BENCHMARKS=OFF \
+  -DCMAKE_BUILD_TYPE=Release \
+  -DCMAKE_CXX_FLAGS="-O3 -march=x86-64 -mtune=generic -DNDEBUG"
 
-# === Runtime Stage ===
+RUN cmake --build --preset=release-linux --parallel $(nproc)
+RUN find build/release/bin -type f -executable -exec strip {} \; || true
+
+# ==========================================
+# Runtime Stage - Minimal prod image
+# ==========================================
 FROM base AS runtime
 
-# Runtime dependencies
-RUN apt-get update && apt-get install -y \
-  libomp5 \
-  libgomp1 \
-  && rm -rf /var/lib/apt/lists/*
+# Environment setup
+RUN groupadd -r neuraforge && \
+  useradd -r -g neuraforge -s /bin/false neuraforge
 
-# Copy LibTorch libraries
-COPY --from=builder /opt/libtorch/lib /usr/local/lib
-COPY --from=builder /opt/libtorch/include /usr/local/include
+RUN mkdir -p /app/bin /app/lib /app/models /app/logs /app/config && \
+  chown -R neuraforge:neuraforge /app
 
-# Copy the built application
-COPY --from=builder /app/build/inference_engine /usr/local/bin/inference_engine
+COPY --from=builder --chown=neuraforge:neuraforge /src/build/release/bin/neuraforge /app/bin/
 
-# Copy configuration and model directories
-COPY --from=builder /app/build/config /app/config
-COPY --from=builder /app/build/models /app/models
+RUN mkdir -p /tmp/lib-check
+COPY --from=builder /src/build/release/lib/ /tmp/lib-check/ 
+RUN if [ "$(ls -A /tmp/lib-check 2>/dev/null)" ]; then \
+  cp -r /tmp/lib-check/* /app/lib/ && \
+  chown -R neuraforge:neuraforge /app/lib; \
+  fi && \
+  rm -rf /tmp/lib-check
 
-# Non-root user
-RUN useradd -m -u 1000 inference && \
-  chown -R inference:inference /app
+RUN echo "/app/lib" > /etc/ld.so.conf.d/neuraforge.conf && ldconfig
+ENV PATH="/app/bin:${PATH}" \
+  LD_LIBRARY_PATH="/app/lib:${LD_LIBRARY_PATH}" \
+  NEURAFORGE_MODEL_PATH="/app/models" \
+  NEURAFORGE_LOG_PATH="/app/logs" \
+  NEURAFORGE_LOG_LEVEL="info" \
+  NEURAFORGE_CONFIG_PATH="/app/config"
 
-USER inference
+USER neuraforge
 WORKDIR /app
 
-# Update library path
-ENV LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH
-
-# Health Check
+EXPOSE 8080
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
   CMD curl -f http://localhost:8080/health || exit 1
 
-# Port and Default Command
-EXPOSE 8080
-CMD ["inference_engine", "--config", "/app/config/server.json"]
+CMD ["neuraforge", "--server", "--host=0.0.0.0", "--port=8080"]
+
+# ==========================================
+# Development Stage - Full dev environment
+# ==========================================
+FROM builder AS development
+
+# Install additional development tools
+RUN apt-get update && apt-get install -y \
+  gdb \
+  valgrind \
+  strace \
+  ltrace \
+  clang-tidy \
+  clang-format \
+  cppcheck \
+  ccache \
+  perf-tools-unstable \
+  htop \
+  vim \
+  nano \
+  tree \
+  && rm -rf /var/lib/apt/lists/*
+
+# Debug Environment Setup
+RUN cmake --preset=debug \
+  -DCMAKE_TOOLCHAIN_FILE=${VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake \
+  -DBUILD_TESTS=ON \
+  -DBUILD_BENCHMARKS=ON \
+  -DENABLE_SANITIZERS=ON \
+  -DENABLE_COVERAGE=ON
+
+RUN cmake --build --preset=debug --parallel $(nproc)
+ENV CMAKE_BUILD_TYPE=Debug \
+  ASAN_OPTIONS="detect_leaks=1:abort_on_error=1:check_initialization_order=1" \
+  UBSAN_OPTIONS="print_stacktrace=1:abort_on_error=1" \
+  VCPKG_ROOT=/opt/vcpkg
+
+WORKDIR /src
+CMD ["/bin/bash"]
+
+# ==========================================
+# Benchmark Stage - Performance testing
+# ==========================================
+FROM runtime AS benchmark
+
+# Install benchmarking tools (as root temporarily)
+USER root
+RUN apt-get update && apt-get install -y \
+  linux-perf \
+  htop \
+  iotop \
+  stress-ng \
+  sysbench \
+  && rm -rf /var/lib/apt/lists/*
+
+# Copy benchmark binary if it exists
+RUN if [ -f "/src/build/release/bin/neuraforge_benchmarks" ]; then \
+  cp /src/build/release/bin/neuraforge_benchmarks /app/bin/ && \
+  chown neuraforge:neuraforge /app/bin/neuraforge_benchmarks; \
+  fi
+
+# Switch back to non-root user
+USER neuraforge
+ENV NEURAFORGE_BENCHMARK_ITERATIONS=1000 \
+  NEURAFORGE_BENCHMARK_WARMUP=100 \
+  NEURAFORGE_BENCHMARK_OUTPUT="/app/logs"
+
+RUN echo '#!/bin/bash\n\
+  if [ -f "/app/bin/neuraforge_benchmarks" ]; then\n\
+  /app/bin/neuraforge_benchmarks --benchmark_format=json --benchmark_out=/app/logs/benchmark_results.json\n\
+  else\n\
+  echo "Benchmark binary not found, running regular inference tests..."\n\
+  /app/bin/neuraforge --benchmark --iterations=${NEURAFORGE_BENCHMARK_ITERATIONS}\n\
+  fi' > /app/bin/run_benchmarks.sh && \
+  chmod +x /app/bin/run_benchmarks.sh
+
+CMD ["/app/bin/run_benchmarks.sh"]
+
+# ==========================================
+# Testing Stage - For CI/CD Testing
+# ==========================================
+FROM development AS testing
+
+# Run tests during build 
+RUN cd /src && ctest --preset=debug --output-on-failure || true
+ENV CTEST_OUTPUT_ON_FAILURE=1 \
+  GTEST_COLOR=1
+
+CMD ["ctest", "--preset=debug", "--verbose"]
+
+# ================================================
+# Security Scan Stage - Vulnerability assessment
+# ================================================
+FROM runtime AS security-scan
+
+# Install dependencies sca
+USER root
+RUN apt-get update && apt-get install -y \
+  clamav \
+  rkhunter \
+  && rm -rf /var/lib/apt/lists/*
+
+USER neuraforge
+CMD ["echo", "Security scan stage - integrate with your security tools"]
+
+# ==========================================
+# Labels and Metadata
+# ==========================================
+LABEL maintainer="NeuraForge Team <team@neuraforge.ai>" \
+  version="1.0.0" \
+  description="High-performance C++20 neural inference engine with multi-stage builds" \
+  org.opencontainers.image.title="NeuraForge" \
+  org.opencontainers.image.description="Blazing fast PyTorch model inference with modern C++20 features" \
+  org.opencontainers.image.version="1.0.0" \
+  org.opencontainers.image.vendor="NeuraForge" \
+  org.opencontainers.image.licenses="MIT" \
+  org.opencontainers.image.source="https://github.com/your-org/neuraforge" \
+  org.opencontainers.image.documentation="https://neuraforge.readthedocs.io" \
+  org.opencontainers.image.created="$(date -u +'%Y-%m-%dT%H:%M:%SZ')" \
+  org.opencontainers.image.authors="NeuraForge Development Team"

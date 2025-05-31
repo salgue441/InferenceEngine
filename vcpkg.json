@@ -1,0 +1,209 @@
+{
+  "$schema": "https://raw.githubusercontent.com/Microsoft/vcpkg/master/scripts/vcpkg.schema.json",
+  "name": "neuraforge",
+  "version": "1.0.0",
+  "description": "High-performance C++20 neural inference engine for PyTorch models",
+  "homepage": "https://github.com/your-org/neuraforge",
+  "license": "MIT",
+  "supports": "linux & windows & osx",
+  "dependencies": [
+    {
+      "name": "vcpkg-cmake",
+      "host": true
+    },
+    {
+      "name": "vcpkg-cmake-config",
+      "host": true
+    },
+    {
+      "name": "libtorch",
+      "version>=": "2.1.0",
+      "features": ["cuda"],
+      "platform": "linux"
+    },
+    {
+      "name": "libtorch",
+      "version>=": "2.1.0",
+      "platform": "!linux"
+    },
+    {
+      "name": "eigen3",
+      "version>=": "3.4.0"
+    },
+    {
+      "name": "opencv4",
+      "version>=": "4.8.0",
+      "default-features": false,
+      "features": ["core", "imgproc", "imgcodecs", "highgui", "dnn"]
+    },
+    {
+      "name": "protobuf",
+      "version>=": "3.21.12"
+    },
+    {
+      "name": "spdlog",
+      "version>=": "1.12.0",
+      "features": ["fmt"]
+    },
+    {
+      "name": "fmt",
+      "version>=": "10.1.1"
+    },
+    {
+      "name": "tbb",
+      "version>=": "2021.10.0"
+    },
+    {
+      "name": "nlohmann-json",
+      "version>=": "3.11.2"
+    },
+    {
+      "name": "cpprest",
+      "version>=": "2.10.18",
+      "platform": "!uwp"
+    },
+    {
+      "name": "boost-system",
+      "version>=": "1.82.0"
+    },
+    {
+      "name": "boost-filesystem",
+      "version>=": "1.82.0"
+    },
+    {
+      "name": "boost-program-options",
+      "version>=": "1.82.0"
+    },
+    {
+      "name": "boost-thread",
+      "version>=": "1.82.0"
+    },
+    {
+      "name": "openssl",
+      "version>=": "3.0.8",
+      "platform": "!uwp"
+    },
+    {
+      "name": "zlib",
+      "version>=": "1.2.13"
+    },
+    {
+      "name": "catch2",
+      "version>=": "3.4.0"
+    },
+    {
+      "name": "benchmark",
+      "version>=": "1.8.3"
+    }
+  ],
+  "features": {
+    "cuda": {
+      "description": "Enable CUDA support for GPU acceleration",
+      "dependencies": [
+        {
+          "name": "cuda",
+          "platform": "linux"
+        },
+        {
+          "name": "cudnn",
+          "platform": "linux"
+        }
+      ]
+    },
+    "mkl": {
+      "description": "Enable Intel MKL for optimized CPU operations",
+      "dependencies": [
+        {
+          "name": "intel-mkl",
+          "platform": "linux | windows"
+        }
+      ]
+    },
+    "tensorrt": {
+      "description": "Enable TensorRT for NVIDIA GPU optimization",
+      "dependencies": [
+        {
+          "name": "tensorrt",
+          "platform": "linux"
+        }
+      ]
+    },
+    "openvino": {
+      "description": "Enable Intel OpenVINO for optimized inference",
+      "dependencies": [
+        {
+          "name": "openvino",
+          "platform": "linux | windows"
+        }
+      ]
+    },
+    "onnx": {
+      "description": "Enable ONNX model support",
+      "dependencies": [
+        {
+          "name": "onnx",
+          "version>=": "1.14.0"
+        },
+        {
+          "name": "onnxruntime",
+          "version>=": "1.15.0"
+        }
+      ]
+    },
+    "profiling": {
+      "description": "Enable profiling and performance analysis tools",
+      "dependencies": [
+        {
+          "name": "tracy",
+          "version>=": "0.9.1"
+        },
+        {
+          "name": "gperftools",
+          "platform": "linux"
+        }
+      ]
+    },
+    "testing": {
+      "description": "Enable testing frameworks and utilities",
+      "dependencies": [
+        {
+          "name": "gtest",
+          "version>=": "1.14.0"
+        },
+        {
+          "name": "gmock",
+          "version>=": "1.14.0"
+        }
+      ]
+    },
+    "monitoring": {
+      "description": "Enable monitoring and metrics collection",
+      "dependencies": [
+        {
+          "name": "prometheus-cpp",
+          "version>=": "1.1.0"
+        }
+      ]
+    },
+    "python-bindings": {
+      "description": "Enable Python bindings for the inference engine",
+      "dependencies": [
+        {
+          "name": "pybind11",
+          "version>=": "2.11.0"
+        },
+        {
+          "name": "python3",
+          "host": true
+        }
+      ]
+    }
+  },
+  "overrides": [
+    {
+      "name": "protobuf",
+      "version": "3.21.12"
+    }
+  ],
+  "builtin-baseline": "2023.08.09"
+}

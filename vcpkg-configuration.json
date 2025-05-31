@@ -1,0 +1,18 @@
+{
+  "$schema": "https://raw.githubusercontent.com/Microsoft/vcpkg/master/scripts/vcpkg-configuration.schema.json",
+  "default-registry": {
+    "kind": "git",
+    "repository": "https://github.com/Microsoft/vcpkg",
+    "baseline": "2023.08.09"
+  },
+  "registries": [
+    {
+      "kind": "git",
+      "repository": "https://github.com/Microsoft/vcpkg",
+      "baseline": "2023.08.09",
+      "packages": ["*"]
+    }
+  ],
+  "overlay-ports": ["./ports"],
+  "overlay-triplets": ["./triplets"]
+}
