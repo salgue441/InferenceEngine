@@ -1,70 +1,386 @@
-# C++ specific
-*.o
-*.obj
-*.exe
-*.out
-*.app
-*.dll
-*.so
-*.dylib
-*.lib
-*.a
-*.la
-*.lo
+# NeuraForge - Git ignore file
 
-# Build directories
+# =============================================================================
+# Build directories and artifacts
+# =============================================================================
 build/
-cmake-build-*/
-Debug/
-Release/
-x64/
 bin/
 lib/
+obj/
+out/
+target/
+dist/
+install/
+*.build/
 
-# IDE specific
-.vs/
-.vscode/
-.idea/
-*.swp
-*.swo
-.clangd/
-compile_commands.json
-
-# CMake
+# CMake generated files
 CMakeCache.txt
 CMakeFiles/
-CMakeScripts/
-Testing/
-Makefile
 cmake_install.cmake
-install_manifest.txt
-CTestTestfile.cmake
+CMakeSettings.json
+.cmake/
+CMakeUserPresets.json
 
-# LibTorch
+# Build outputs
+*.exe
+*.dll
+*.so
+*.so.*
+*.dylib
+*.a
+*.lib
+*.pdb
+*.ilk
+*.exp
+*.obj
+*.o
+
+# =============================================================================
+# vcpkg and package managers
+# =============================================================================
+vcpkg_installed/
+.vcpkg/
+vcpkg/
+
+# Conan
+conandata.yml
+conanfile.txt
+conaninfo.txt
+conanbuildinfo.*
+.conan/
+
+# Hunter
+_builds/
+_hunter/
+
+# =============================================================================
+# IDE and editor files
+# =============================================================================
+# Visual Studio
+.vs/
+*.user
+*.userprefs
+*.pidb
+*.suo
+*.sdf
+*.opensdf
+*.vcxproj.user
+*.vcxproj.filters
+*.VC.db
+*.VC.VC.opendb
+
+# Visual Studio Code
+.vscode/
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
+# JetBrains IDEs
+.idea/
+*.iml
+*.iws
+cmake-build-*/
+
+# Eclipse
+.project
+.metadata
+.cproject
+.settings/
+
+# Code::Blocks
+*.cbp
+*.layout
+*.depend
+
+# Qt Creator
+CMakeLists.txt.user*
+
+# Xcode
+*.xcodeproj/
+*.xcworkspace/
+
+# Sublime Text
+*.sublime-workspace
+*.sublime-project
+
+# Vim
+*.swp
+*.swo
+*~
+.netrwhist
+
+# Emacs
+*~
+\#*\#
+/.emacs.desktop
+/.emacs.desktop.lock
+*.elc
+auto-save-list
+tramp
+.\#*
+
+# =============================================================================
+# Compiled Python files
+# =============================================================================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# =============================================================================
+# Testing and coverage
+# =============================================================================
+# Test results
+test-results/
+test_results/
+test-output/
+*.xml
+junit.xml
+gtest.xml
+
+# Coverage reports
+coverage/
+coverage.xml
+coverage.info
+coverage_html/
+*.gcda
+*.gcno
+*.gcov
+lcov.info
+.coverage
+htmlcov/
+
+# Profiling
+*.prof
+*.trace
+callgrind.out*
+massif.out*
+cachegrind.out*
+perf.data*
+gmon.out
+
+# Valgrind
+vgcore.*
+*.supp
+
+# =============================================================================
+# Logs and temporary files
+# =============================================================================
+logs/
+*.log
+*.tmp
+*.temp
+temp/
+tmp/
+
+# Core dumps
+core
+core.*
+vgcore.*
+
+# =============================================================================
+# Models and data files
+# =============================================================================
+models/
+data/
+datasets/
 *.pt
 *.pth
-libtorch/
+*.onnx
+*.pb
+*.tflite
+*.h5
+*.pkl
+*.pickle
+*.bin
+*.safetensors
 
-# Docker
-.docker/
-docker-compose.override.yml
-Dockerfile.*
-*.env
+# Large data files
+*.csv
+*.tsv
+*.parquet
+*.arrow
 
-# Dependency directories
-vcpkg/
-conan/
-deps/
+# =============================================================================
+# Documentation build
+# =============================================================================
+docs/_build/
+docs/build/
+site/
+_site/
 
-# OS specific
+# Doxygen
+html/
+latex/
+Doxyfile.bak
+
+# Sphinx
+docs/_build/
+docs/doctrees/
+
+# =============================================================================
+# OS specific files
+# =============================================================================
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+*.cab
+*.msi
+*.msm
+*.msp
+*.lnk
+
+# macOS
 .DS_Store
-.DS_Store?
+.AppleDouble
+.LSOverride
 ._*
 .Spotlight-V100
 .Trashes
-ehthumbs.db
-Thumbs.db
+.fseventsd
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
 
-# Log files
-*.log
-logs/
+# Linux
+*~
+.nfs*
+.directory
+
+# =============================================================================
+# Environment and configuration
+# =============================================================================
+.env
+.env.local
+.env.*.local
+*.conf
+*.ini
+!vcpkg.json
+!vcpkg-configuration.json
+
+# Docker
+.dockerignore.bak
+
+# Kubernetes
+*.kubeconfig
+
+# =============================================================================
+# Security and secrets
+# =============================================================================
+*.key
+*.pem
+*.crt
+*.csr
+*.p12
+*.pfx
+secrets/
+.secrets/
+credentials/
+.aws/
+.ssh/
+
+# =============================================================================
+# Build tools and caches
+# =============================================================================
+# ccache
+.ccache/
+
+# Make
+.make/
+
+# Ninja
+.ninja_deps
+.ninja_log
+
+# Bazel
+bazel-*
+
+# Meson
+builddir/
+
+# =============================================================================
+# Benchmarking and performance
+# =============================================================================
+benchmark-results/
+benchmark_results/
+*.json
+!vcpkg.json
+!vcpkg-configuration.json
+!package.json
+
+# Performance analysis
+*.flamegraph
+*.folded
+*.svg
+flamegraph/
+profile/
+analysis/
+
+# =============================================================================
+# Static analysis
+# =============================================================================
+# Clang tools
+compile_commands.json
+.clang_complete
+.clangd/
+
+# Static analysis outputs
+cppcheck.xml
+clang-tidy.yaml
+scan-build/
+pvs-studio/
+
+# =============================================================================
+# Containers and virtualization
+# =============================================================================
+.vagrant/
+Vagrantfile.local
+
+# =============================================================================
+# Backup and archive files
+# =============================================================================
+*.bak
+*.backup
+*.old
+*.orig
+*.save
+*.swp
+*.swo
+*.zip
+*.tar
+*.tar.gz
+*.tar.bz2
+*.tar.xz
+*.7z
+*.rar
+
+# =============================================================================
+# Node.js (for tooling)
+# =============================================================================
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# =============================================================================
+# Custom project specific
+# =============================================================================
+# Add any project-specific files here
